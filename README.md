@@ -32,7 +32,7 @@ Each package here is independent and published separately — depend on only the
 | [`miso_record`](https://github.com/misonetwork/miso-record) | all | The `Record` itself |
 | [`miso`](https://github.com/misonetwork/miso-protocol) | `miso_record_acl` | Core `Composition` / `Recording` / `Release` / `Track` types |
 
-Both resolve to sibling checkouts (`../../miso-record/move`, `../../miso-protocol/move`). To build against the published packages instead, point them at their git sources:
+Both resolve to sibling checkouts (`../../miso-record/move`, `../../miso-protocol`). To build against the published packages instead, point them at their git sources:
 
 ```toml
 miso_record = { git = "https://github.com/misonetwork/miso-record.git", subdir = "move", rev = "main" }

@@ -9,5 +9,5 @@ authors = ["Miso Labs, Inc. (build@miso.network)"]
 # discharges link 4 — and the `Record` that is the credential. Nothing else:
 # Seal itself is off-chain, so a Seal policy has no Seal dependency.
 [dependencies]
-miso = { local = "../../miso-protocol/move" }
+miso = { local = "../../../misonetwork/miso-protocol" }
 miso_record = { local = "../../miso-record/move" }
