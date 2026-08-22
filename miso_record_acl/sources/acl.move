@@ -69,10 +69,8 @@
 /// so losing it is silent.
 ///
 /// Because a simulation reports only success or failure, this module leaves
-/// nothing to inference: it aborts with `#[error]` constants, so the failure
-/// carries a readable reason a verifier can log. Note that `#[error]` abort codes
-/// embed the source line, so off-chain code must treat them as diagnostics and
-/// branch only on success/failure.
+/// nothing to inference: each failure aborts with a distinct named error
+/// constant, so a verifier can log the stable code and reason about it.
 ///
 /// Seal asks that a policy be free of side effects. Executed for real, every entry
 /// here is a self-transfer no-op — and a key server reads only the simulation's
@@ -92,17 +90,17 @@ use sui::bcs;
 
 // === Errors ===
 
-#[error]
-const EWrongRelease: vector<u8> = b"Record is not a copy of this release";
+/// Record is not a copy of this release
+const EWrongRelease: u64 = 0;
 
-#[error]
-const ERecordingNotOnRelease: vector<u8> = b"Release has no track for this recording";
+/// Release has no track for this recording
+const ERecordingNotOnRelease: u64 = 1;
 
-#[error]
-const EMalformedIdentity: vector<u8> = b"Identity is not [subject id][nonce]";
+/// Identity is not [subject id][nonce]
+const EMalformedIdentity: u64 = 2;
 
-#[error]
-const EWrongSubject: vector<u8> = b"Identity names a different subject than the one presented";
+/// Identity names a different subject than the one presented
+const EWrongSubject: u64 = 3;
 
 // === Identity ===
 
