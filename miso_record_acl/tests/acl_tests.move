@@ -95,7 +95,7 @@ fun approves_a_recording_on_the_records_release() {
     let recording = id(@0xBEEF);
 
     let (rel, cap) = test_release(vector[recording, id(@0xCAFE)], &mut ctx);
-    let rec = test_record(rel.id(), &clk, &mut ctx);
+    let rec = test_record(object::id(&rel), &clk, &mut ctx);
 
     acl::seal_approve_recording_for_testing(acl::identity(recording, NONCE), rec, &rel, &ctx);
 
@@ -112,7 +112,7 @@ fun approves_a_recording_late_in_the_tracklist() {
 
     // The target is the last of four tracks, so a scan that stopped early misses it.
     let (rel, cap) = test_release(vector[id(@0xA1), id(@0xA2), id(@0xB1), recording], &mut ctx);
-    let rec = test_record(rel.id(), &clk, &mut ctx);
+    let rec = test_record(object::id(&rel), &clk, &mut ctx);
 
     acl::seal_approve_recording_for_testing(acl::identity(recording, NONCE), rec, &rel, &ctx);
 
@@ -127,9 +127,9 @@ fun approves_a_copy_of_the_release() {
     let clk = clock::create_for_testing(&mut ctx);
 
     let (rel, cap) = test_release(vector[id(@0xA1), id(@0xA2)], &mut ctx);
-    let rec = test_record(rel.id(), &clk, &mut ctx);
+    let rec = test_record(object::id(&rel), &clk, &mut ctx);
 
-    acl::seal_approve_release_for_testing(acl::identity(rel.id(), NONCE), rec, &rel, &ctx);
+    acl::seal_approve_release_for_testing(acl::identity(object::id(&rel), NONCE), rec, &rel, &ctx);
 
     destroy(rel);
     destroy(cap);
@@ -143,7 +143,7 @@ fun the_asserts_accept_a_matching_record() {
     let recording = id(@0xBEEF);
 
     let (rel, cap) = test_release(vector[recording], &mut ctx);
-    let rec = test_record(rel.id(), &clk, &mut ctx);
+    let rec = test_record(object::id(&rel), &clk, &mut ctx);
 
     acl::assert_grants_release(&rec, &rel);
     acl::assert_grants_recording(&rec, &rel, recording);
@@ -171,11 +171,11 @@ fun approves_the_composition_behind_a_recording_on_the_release() {
     let (rec_obj, rec_cap) = recording::new_for_testing<MASTER, SONG>(&mut ctx);
 
     // The release carries a track for this recording, alongside an unrelated one.
-    let (rel, cap) = test_release(vector[id(@0xA1), rec_obj.id()], &mut ctx);
-    let record = test_record(rel.id(), &clk, &mut ctx);
+    let (rel, cap) = test_release(vector[id(@0xA1), object::id(&rec_obj)], &mut ctx);
+    let record = test_record(object::id(&rel), &clk, &mut ctx);
 
     acl::seal_approve_composition_for_testing(
-        acl::identity(comp.id(), NONCE),
+        acl::identity(object::id(&comp), NONCE),
         record,
         &rel,
         &rec_obj,
@@ -203,10 +203,10 @@ fun a_composition_reached_only_off_the_release_aborts() {
     // The recording really is of this composition — it is just not on the release
     // the listener owns, so link 3 fails before link 4 is ever reached.
     let (rel, cap) = test_release(vector[id(@0xA1)], &mut ctx);
-    let record = test_record(rel.id(), &clk, &mut ctx);
+    let record = test_record(object::id(&rel), &clk, &mut ctx);
 
     acl::seal_approve_composition_for_testing(
-        acl::identity(comp.id(), NONCE),
+        acl::identity(object::id(&comp), NONCE),
         record,
         &rel,
         &rec_obj,
@@ -235,7 +235,7 @@ fun a_record_for_another_release_aborts() {
     // of a different one, so link 2 fails.
     let (rel, cap) = test_release(vector[recording], &mut ctx);
     let (other, other_cap) = test_release(vector[recording], &mut ctx);
-    let rec = test_record(other.id(), &clk, &mut ctx);
+    let rec = test_record(object::id(&other), &clk, &mut ctx);
 
     acl::seal_approve_recording_for_testing(acl::identity(recording, NONCE), rec, &rel, &ctx);
 
@@ -253,9 +253,9 @@ fun a_record_for_another_release_fails_the_release_approval() {
 
     let (rel, cap) = test_release(vector[id(@0xA1)], &mut ctx);
     let (other, other_cap) = test_release(vector[id(@0xA1)], &mut ctx);
-    let rec = test_record(other.id(), &clk, &mut ctx);
+    let rec = test_record(object::id(&other), &clk, &mut ctx);
 
-    acl::seal_approve_release_for_testing(acl::identity(rel.id(), NONCE), rec, &rel, &ctx);
+    acl::seal_approve_release_for_testing(acl::identity(object::id(&rel), NONCE), rec, &rel, &ctx);
 
     destroy(rel);
     destroy(cap);
@@ -272,7 +272,7 @@ fun a_recording_absent_from_the_release_aborts() {
     // The sender owns a real copy of this release — it just does not contain the
     // recording being asked for, so link 3 fails.
     let (rel, cap) = test_release(vector[id(@0xA1), id(@0xA2)], &mut ctx);
-    let rec = test_record(rel.id(), &clk, &mut ctx);
+    let rec = test_record(object::id(&rel), &clk, &mut ctx);
 
     acl::seal_approve_recording_for_testing(acl::identity(id(@0xDEAD), NONCE), rec, &rel, &ctx);
 
@@ -294,9 +294,9 @@ fun an_identity_for_another_release_aborts() {
     // The sender owns a genuine copy of `rel` — and asks for the key to `other`.
     let (rel, cap) = test_release(vector[id(@0xA1)], &mut ctx);
     let (other, other_cap) = test_release(vector[id(@0xA1)], &mut ctx);
-    let rec = test_record(rel.id(), &clk, &mut ctx);
+    let rec = test_record(object::id(&rel), &clk, &mut ctx);
 
-    acl::seal_approve_release_for_testing(acl::identity(other.id(), NONCE), rec, &rel, &ctx);
+    acl::seal_approve_release_for_testing(acl::identity(object::id(&other), NONCE), rec, &rel, &ctx);
 
     destroy(rel);
     destroy(cap);
@@ -314,8 +314,8 @@ fun an_identity_for_another_composition_aborts() {
     let (rec_obj, rec_cap) = recording::new_for_testing<MASTER, SONG>(&mut ctx);
 
     // Links 2, 3 and 4 all hold — the identity just names something else.
-    let (rel, cap) = test_release(vector[rec_obj.id()], &mut ctx);
-    let record = test_record(rel.id(), &clk, &mut ctx);
+    let (rel, cap) = test_release(vector[object::id(&rec_obj)], &mut ctx);
+    let record = test_record(object::id(&rel), &clk, &mut ctx);
 
     acl::seal_approve_composition_for_testing(
         acl::identity(id(@0xDEAD), NONCE),
@@ -341,11 +341,11 @@ fun a_malformed_identity_aborts_the_release_approval() {
     let clk = clock::create_for_testing(&mut ctx);
 
     let (rel, cap) = test_release(vector[id(@0xA1)], &mut ctx);
-    let rec = test_record(rel.id(), &clk, &mut ctx);
+    let rec = test_record(object::id(&rel), &clk, &mut ctx);
 
     // The release id alone, with no nonce and no length byte: a key server would
     // happily derive a key for it, so the policy must not.
-    let mut id = rel.id().to_bytes();
+    let mut id = object::id(&rel).to_bytes();
     id.push_back(0);
     id.push_back(0);
 

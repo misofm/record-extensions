@@ -138,7 +138,7 @@ public fun subject_of(id: vector<u8>): ID {
 /// by any package that has already established who holds the record: a later
 /// player shelf, a second Seal policy.
 public fun assert_grants_release(record: &Record, release: &Release) {
-    assert!(record.release_id() == release.id(), EWrongRelease);
+    assert!(record.release_id() == object::id(release), EWrongRelease);
 }
 
 /// Assert that `record` grants access to `recording_id` — links 2 and 3: the
@@ -171,7 +171,7 @@ public fun assert_grants_composition<RecordingShare, CompositionShare>(
     recording: &Recording<RecordingShare, CompositionShare>,
     _composition: &Composition<CompositionShare>,
 ) {
-    assert_grants_recording(record, release, recording.id());
+    assert_grants_recording(record, release, object::id(recording));
 }
 
 // === Seal Policy ===
@@ -190,7 +190,7 @@ entry fun seal_approve_release(
     release: &Release,
     ctx: &TxContext,
 ) {
-    assert!(subject_of(id) == release.id(), EWrongSubject);
+    assert!(subject_of(id) == object::id(release), EWrongSubject);
     assert_grants_release(&record, release);
     transfer::public_transfer(record, ctx.sender())
 }
@@ -227,7 +227,7 @@ entry fun seal_approve_composition<RecordingShare, CompositionShare>(
     composition: &Composition<CompositionShare>,
     ctx: &TxContext,
 ) {
-    assert!(subject_of(id) == composition.id(), EWrongSubject);
+    assert!(subject_of(id) == object::id(composition), EWrongSubject);
     assert_grants_composition(&record, release, recording, composition);
     transfer::public_transfer(record, ctx.sender())
 }
