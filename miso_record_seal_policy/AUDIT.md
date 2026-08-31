@@ -1,80 +1,37 @@
 # Security review — `miso_record_seal_policy`
 
-**Date:** 2026-08-31
-
-**Scope:** `sources/policy.move`, the concrete Record dependency at `a235ffd`, and
-the Seal evaluator contract.
+**Date:** 2026-09-01
 
 ## Security claim
 
-A successful `policy::seal_approve(id, gate, record)` evaluation establishes that the
-session-key signer currently owns the exact key-only Miso `Record` type for the
-release encoded in `id`, and that the identity names the exact frozen `RecordGate`
-passed to the policy.
+A successful `policy::seal_approve(id, gate, record, release)` evaluation
+establishes that the session-key signer currently owns the exact key-only Miso
+`Record`, the supplied immutable `Release` is the one named by that Record, and
+the Recording encoded in the exact 98-byte identity is a member of that
+Release's immutable tracklist.
 
-This depends jointly on:
+The identity is Recording-bound rather than Release-bound. This makes the same
+canonical session accessible through every legitimate Release containing the
+Recording and avoids a mutable list of per-Release key envelopes.
 
-- Record creation requiring a Settings-authorized witness;
-- Record omitting `store` and exposing no share/freeze function;
-- exact gate ID and immutable Record `release_id` checks;
-- Seal `ValidPtb` rejecting non-input arguments and non-approval commands; and
-- key servers resolving current object inputs and evaluating with normal sender/owner
-  validation.
+## Adversarial coverage
 
-The private `entry` modifier is defense in depth and Seal compatibility guidance. It
-is not itself proof of current ownership.
+Move tests cover gate freezing, exact golden identity bytes, two distinct
+Releases unlocking the same Recording identity, wrong gate, substituted Release,
+Recording outside the Release, malformed/trailing identity bytes, and invalid
+nonce length. Successful approval snapshots the borrowed object identities and
+does not mutate them.
 
-## State and authority
-
-- `RecordGate` is key-only. `init` creates one and freezes it immediately.
-- No admin capability or mutable issuer list exists in this policy. Issuer governance
-  belongs to `miso_record::settings::Settings`, the single creation boundary for the
-  concrete Record type.
-- Every ciphertext identity embeds the gate object ID, so another policy deployment
-  cannot reinterpret it.
-- The policy has no Pressing dependency. Any Record issuer authorized at creation is
-  treated uniformly; a policy-local certificate allowlist would duplicate Settings
-  and could drift from it.
-
-## Identity validation
-
-The identity is raw `[u8, u8, address, address, 32 bytes]`, exactly 98 bytes. Approval:
-
-1. rejects fewer than 98 bytes before invoking the BCS reader;
-2. peels schema, policy kind, gate address, release address, and a 32-byte nonce;
-3. rejects any remainder, including a 99th trailing byte; and
-4. checks schema `1`, release-mix kind `1`, exact gate ID, and exact Record release.
-
-The public builder separately rejects non-32-byte nonces. Randomness remains an
-encryptor obligation.
-
-## Side effects and ownership
-
-`seal_approve` takes `&RecordGate` and `&Record`, returns nothing, emits no event, and
-performs no write. The tests snapshot both object IDs and the Record release across a
-successful call.
-
-The immutable borrow only proves possession when the verifier performs Seal's direct
-input/current-owner checks. An unchecked simulation or a fabricated value outside
-normal transaction input validation would not establish ownership.
-
-## Adversarial verification
-
-Ten Move tests cover init/freeze behavior, exact golden bytes, successful
-side-effect-free approval, wrong gate/release, wrong schema/kind, short and trailing
-identities, and invalid nonce length. Test Records are minted through an explicitly
-authorized witness, not fabricated with a test-only constructor.
-
-An external-package compiler probe separately attempts to instantiate `RecordGate`
-and invoke private `seal_approve`; the compiler must reject both visibility breaches.
+External compiler probes must additionally confirm that another package cannot
+construct `RecordGate` or call private `seal_approve` directly.
 
 ## Residual assumptions
 
-- Compromise or misuse of Record's `SettingsAdminCap` can authorize an issuer whose
-  Records this policy will accept. Revocation prevents future creation but does not
-  invalidate Records already minted while authorized.
-- Record or policy package upgrades could invalidate the reviewed assumptions.
-- Seal threshold/key-server integrity and full-node freshness remain external trust
-  assumptions.
-- A holder can retain a key already fetched. Fresh nonces protect future identities;
-  they do not revoke released key material.
+- Record Settings administration controls which issuers can mint the concrete
+  Record format. Revocation prevents later mints but does not invalidate copies
+  already created by an authorized witness.
+- Recording administration can replace the public session pointer. Published
+  Walrus bytes and a key already released remain recoverable to anyone who kept
+  them; this is access gating, not retroactive DRM.
+- Seal threshold/key-server integrity, Sui input freshness, and full-node
+  availability remain external trust assumptions.
