@@ -16,26 +16,8 @@ use_environment = "mainnet"
 manifest_digest = "CD547CB1ACCE0880C835DAED2D8FFCB91D56C833AE5240D3AA5B918398263195"
 deps = { MoveStdlib = "MoveStdlib" }
 
-[pinned.mainnet.bps]
-source = { git = "https://github.com/unconfirmedlabs/bps.git", subdir = ".", rev = "26fa571e3d8fc79125e6a50f5b735c939a5251f6" }
-use_environment = "mainnet"
-manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
-deps = { std = "MoveStdlib", sui = "Sui" }
-
-[pinned.mainnet.miso]
-source = { git = "https://github.com/misonetwork/protocol.git", subdir = ".", rev = "7bda0bb740c32a75ef76c0739cb671b3de77d338" }
-use_environment = "mainnet"
-manifest_digest = "910AFA936C06AD766B371CE4CE718D97EA4ED31809A206688EAF38CE3A0AB648"
-deps = { bps = "bps", miso_share = "miso_share", std = "MoveStdlib", sui = "Sui" }
-
-[pinned.mainnet.miso_pressing]
-source = { git = "https://github.com/misofm/pressing.git", subdir = ".", rev = "dc44fa7c61ecdd92e4c672057b4c6142e874053e" }
-use_environment = "mainnet"
-manifest_digest = "D4D2AEFCB5241FD69E15D3B9BD43E820368EC23120FC61437ED05239EA08E668"
-deps = { miso = "miso", miso_record = "miso_record", std = "MoveStdlib", sui = "Sui" }
-
 [pinned.mainnet.miso_record]
-source = { git = "https://github.com/misofm/record.git", subdir = "move", rev = "46dadad176ceadef8f698498968a1688af96960b" }
+source = { git = "https://github.com/misofm/record.git", subdir = ".", rev = "a235ffd41e8d2b1e76e1c7bba292e5ee11074e5b" }
 use_environment = "mainnet"
 manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
 deps = { std = "MoveStdlib", sui = "Sui" }
@@ -43,14 +25,8 @@ deps = { std = "MoveStdlib", sui = "Sui" }
 [pinned.mainnet.miso_record_seal_policy]
 source = { root = true }
 use_environment = "mainnet"
-manifest_digest = "31F89C52C9F1B15EB2CA4D02F33D8B7D52A8EA5CB587ADA993262C243C9F6D6B"
-deps = { miso_pressing = "miso_pressing", miso_record = "miso_record", std = "MoveStdlib", sui = "Sui" }
-
-[pinned.mainnet.miso_share]
-source = { git = "https://github.com/misonetwork/share.git", subdir = ".", rev = "561cfad98e4aaa63e6b34d5a6f4c22e397c70a52" }
-use_environment = "mainnet"
-manifest_digest = "E41BBD67BE8940D26C79D78B028477EF5B33BA217A1282C78ACB344CF8A5ECF6"
-deps = { std = "MoveStdlib", sui = "Sui" }
+manifest_digest = "F1EB944BF1AC589AF620A9344EE5857E677DF2395C8C637AFAD4794EC5E1B210"
+deps = { miso_record = "miso_record", std = "MoveStdlib", sui = "Sui" }
 
 [pinned.testnet.MoveStdlib]
 source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "2a0becb2fcc6989e492981104af67f62f2c9511a" }
@@ -64,26 +40,8 @@ use_environment = "testnet"
 manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
 deps = { MoveStdlib = "MoveStdlib" }
 
-[pinned.testnet.bps]
-source = { git = "https://github.com/unconfirmedlabs/bps.git", subdir = ".", rev = "26fa571e3d8fc79125e6a50f5b735c939a5251f6" }
-use_environment = "testnet"
-manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
-deps = { std = "MoveStdlib", sui = "Sui" }
-
-[pinned.testnet.miso]
-source = { git = "https://github.com/misonetwork/protocol.git", subdir = ".", rev = "7bda0bb740c32a75ef76c0739cb671b3de77d338" }
-use_environment = "testnet"
-manifest_digest = "74A38A95D110CE1D6341D77397F2B998A094776B675062542A1A27751B047E3B"
-deps = { bps = "bps", miso_share = "miso_share", std = "MoveStdlib", sui = "Sui" }
-
-[pinned.testnet.miso_pressing]
-source = { git = "https://github.com/misofm/pressing.git", subdir = ".", rev = "dc44fa7c61ecdd92e4c672057b4c6142e874053e" }
-use_environment = "testnet"
-manifest_digest = "33460501C3C89DD01CC30144D13ABA722AD88EDC56C6DFA91C31CD680BBD9E9F"
-deps = { miso = "miso", miso_record = "miso_record", std = "MoveStdlib", sui = "Sui" }
-
 [pinned.testnet.miso_record]
-source = { git = "https://github.com/misofm/record.git", subdir = "move", rev = "46dadad176ceadef8f698498968a1688af96960b" }
+source = { git = "https://github.com/misofm/record.git", subdir = ".", rev = "a235ffd41e8d2b1e76e1c7bba292e5ee11074e5b" }
 use_environment = "testnet"
 manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
 deps = { std = "MoveStdlib", sui = "Sui" }
@@ -91,11 +49,5 @@ deps = { std = "MoveStdlib", sui = "Sui" }
 [pinned.testnet.miso_record_seal_policy]
 source = { root = true }
 use_environment = "testnet"
-manifest_digest = "C75AE1B51C2E71FE8896DB217A36F908C37B3DB2796EA02DFE020AA378127925"
-deps = { miso_pressing = "miso_pressing", miso_record = "miso_record", std = "MoveStdlib", sui = "Sui" }
-
-[pinned.testnet.miso_share]
-source = { git = "https://github.com/misonetwork/share.git", subdir = ".", rev = "561cfad98e4aaa63e6b34d5a6f4c22e397c70a52" }
-use_environment = "testnet"
-manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
-deps = { std = "MoveStdlib", sui = "Sui" }
+manifest_digest = "924A5EE5EE324FD2D95B51FFD3CE450FE03276C45C488D8A1F6DD67EC9FF6A6D"
+deps = { miso_record = "miso_record", std = "MoveStdlib", sui = "Sui" }

@@ -2,95 +2,79 @@
 
 **Date:** 2026-08-31
 
-**Scope:** `sources/policy.move`, its dependency assumptions, and the Seal evaluator
-contract
+**Scope:** `sources/policy.move`, the concrete Record dependency at `a235ffd`, and
+the Seal evaluator contract.
 
 ## Security claim
 
-A successful Seal evaluation of
-`policy::seal_approve<T>(id, gate, record)` establishes that the session-key signer
-currently owns a key-only `Record<T>` for the release encoded in `id`, and that `T` is
-the original-ID certificate type authorized by the exact immutable gate encoded in
-the same identity.
+A successful `policy::seal_approve(id, gate, record)` evaluation establishes that the
+session-key signer currently owns the exact key-only Miso `Record` type for the
+release encoded in `id`, and that the identity names the exact frozen `RecordGate`
+passed to the policy.
 
-The claim depends jointly on:
+This depends jointly on:
 
-- the record core omitting `store` and exposing no share or freeze function;
-- exact gate object ID, original certificate type, and record `release_id` checks;
-- Seal `ValidPtb` rejecting non-input arguments and non-`seal_approve*` commands; and
-- key servers resolving object inputs to their latest on-chain versions and evaluating
-  with normal sender/owner input validation.
+- Record creation requiring a Settings-authorized witness;
+- Record omitting `store` and exposing no share/freeze function;
+- exact gate ID and immutable Record `release_id` checks;
+- Seal `ValidPtb` rejecting non-input arguments and non-approval commands; and
+- key servers resolving current object inputs and evaluating with normal sender/owner
+  validation.
 
-The private `entry` modifier is defense in depth and upgrade guidance. It is not, by
-itself, proof of current ownership.
+The private `entry` modifier is defense in depth and Seal compatibility guidance. It
+is not itself proof of current ownership.
 
 ## State and authority
 
-- `CertificateGate` is key-only and created only inside this module. Every production
-  creation path freezes it immediately, so the gate ID and stored `TypeName` are
-  permanent and globally readable.
-- `PolicyAdminCap` is key-only. An external package cannot share or freeze it to turn
-  `&PolicyAdminCap` into public authority. The module exposes address transfer and a
-  private entry that creates and freezes gates.
-- The init gate authorizes
-  `miso_pressing::certificate::Certificate`. Later gates store
-  `type_name::with_original_ids<T>()`, preserving type identity across compatible
-  upgrades of a trusted certificate package.
-- Adding a gate only authorizes identities that explicitly embed that new gate ID. It
-  cannot reinterpret an existing ciphertext identity.
+- `RecordGate` is key-only. `init` creates one and freezes it immediately.
+- No admin capability or mutable issuer list exists in this policy. Issuer governance
+  belongs to `miso_record::settings::Settings`, the single creation boundary for the
+  concrete Record type.
+- Every ciphertext identity embeds the gate object ID, so another policy deployment
+  cannot reinterpret it.
+- The policy has no Pressing dependency. Any Record issuer authorized at creation is
+  treated uniformly; a policy-local certificate allowlist would duplicate Settings
+  and could drift from it.
 
 ## Identity validation
 
 The identity is raw `[u8, u8, address, address, 32 bytes]`, exactly 98 bytes. Approval:
 
-1. rejects fewer than 98 bytes before using the BCS reader;
-2. peels schema, policy kind, gate address, release address, and a 32-byte `u256` nonce;
+1. rejects fewer than 98 bytes before invoking the BCS reader;
+2. peels schema, policy kind, gate address, release address, and a 32-byte nonce;
 3. rejects any remainder, including a 99th trailing byte; and
-4. checks schema `1`, release-mix kind `1`, exact gate ID, exact original certificate
-   type, and exact record release.
+4. checks schema `1`, release-mix kind `1`, exact gate ID, and exact Record release.
 
-The public builder separately rejects non-32-byte nonces. Randomness cannot be proven
-on chain and remains an encryptor obligation.
+The public builder separately rejects non-32-byte nonces. Randomness remains an
+encryptor obligation.
 
-## Side effects
+## Side effects and ownership
 
-`seal_approve` takes `&CertificateGate` and `&Record<T>`, returns nothing, emits no
-event, and performs no write. Unit tests snapshot both object IDs and all readable
-record/gate fields across a successful call.
+`seal_approve` takes `&RecordGate` and `&Record`, returns nothing, emits no event, and
+performs no write. The tests snapshot both object IDs and the Record release across a
+successful call.
 
-## Deployment trust boundary
+The immutable borrow only proves possession when the verifier performs Seal's direct
+input/current-owner checks. An unchecked simulation or a fabricated value outside
+normal transaction input validation would not establish ownership.
 
-Miso's publication procedure consumes the fresh `UpgradeCap` for the policy and for
-both packages in its trust closure:
+## Adversarial verification
 
-- `miso_record`: an upgrade could add a share/freeze or alternative transfer path and
-  invalidate the current-owner argument;
-- `miso_pressing`: an upgrade could widen construction of the trusted original-ID
-  `Certificate` type; and
-- `miso_record_seal_policy`: an upgrade could change the approval predicate itself.
+Ten Move tests cover init/freeze behavior, exact golden bytes, successful
+side-effect-free approval, wrong gate/release, wrong schema/kind, short and trailing
+identities, and invalid nonce length. Test Records are minted through an explicitly
+authorized witness, not fabricated with a test-only constructor.
 
-Applications pin the reviewed policy package, frozen gate, chain, and committee and
-reject descriptor-selected alternatives. They do not claim to prove global absence of
-an `UpgradeCap`: Sui exposes no general Move predicate for that fact, and an
-address-scoped RPC census would not be a proof because a cap can move or be wrapped.
-Immutability of Miso's deployed Record, Pressing, and policy packages is therefore an
-explicit operator/customer trust assumption. An on-chain attestation would require a
-separate trusted off-chain mechanism such as Nautilus and is outside this launch.
+An external-package compiler probe separately attempts to instantiate `RecordGate`
+and invoke private `seal_approve`; the compiler must reject both visibility breaches.
 
 ## Residual assumptions
 
+- Compromise or misuse of Record's `SettingsAdminCap` can authorize an issuer whose
+  Records this policy will accept. Revocation prevents future creation but does not
+  invalidate Records already minted while authorized.
+- Record or policy package upgrades could invalidate the reviewed assumptions.
 - Seal threshold/key-server integrity and full-node freshness remain external trust
   assumptions.
-- A holder can retain a key already fetched. Fresh random 32-byte nonces prevent them
-  from predicting identities for future encrypted material; they do not revoke keys
-  already released.
-- Whoever controls `PolicyAdminCap` decides which new certificate types may authorize
-  newly created identities. Cap custody must match that governance role.
-- Admin-cap transfer is one-step and irreversible. Operational procedure must verify
-  the recipient address before signing; loss only prevents adding future gate types.
-
-## Verification
-
-Move tests cover init/freeze behavior, later gate addition, admin-cap transfer, exact
-golden bytes, successful side-effect-free approval, wrong type/gate/release, wrong
-schema/kind, short and trailing identities, and invalid nonce length.
+- A holder can retain a key already fetched. Fresh nonces protect future identities;
+  they do not revoke released key material.

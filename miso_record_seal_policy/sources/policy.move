@@ -1,23 +1,20 @@
 // Copyright (c) Miso Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-/// Seal policy for release-mix material held by trusted record owners.
+/// Seal policy for release-mix material held by Miso Record owners.
 ///
-/// A `CertificateGate` is an immutable, key-only authorization object for exactly one
-/// certificate type. The package creates the pressing-certificate gate at publication;
-/// the `PolicyAdminCap` can create and freeze more gates later without upgrading the
-/// package. Every Seal identity pins a particular gate, so adding a gate cannot widen
-/// access to identities encrypted against an earlier one.
+/// The package creates one frozen `RecordGate` at publication. Every Seal identity
+/// pins that exact gate and one release. The Record type itself is concrete and comes
+/// from the pinned `miso_record` package; its shared Settings object governs which
+/// module-controlled witness types can create Records.
 ///
-/// Ownership is established by the combination of a key-only `Record`, this package's
-/// exact gate/type/release checks, and Seal key servers' `ValidPtb` + current-owner
-/// simulation. The private `entry` boundary is recommended by Seal, but is not by
-/// itself the ownership proof.
+/// Ownership is established by the combination of the key-only `Record`, this
+/// package's exact gate/release checks, and Seal key servers' `ValidPtb` plus
+/// current-owner simulation. The private `entry` boundary follows Seal guidance but
+/// is not, by itself, the ownership proof.
 module miso_record_seal_policy::policy;
 
-use miso_pressing::certificate::Certificate;
 use miso_record::record::{Self, Record};
-use std::type_name::{Self, TypeName};
 use sui::bcs;
 
 // === Identity constants ===
@@ -44,11 +41,7 @@ const EUnsupportedSchema: vector<u8> = b"Seal identity uses an unsupported schem
 const EWrongPolicyKind: vector<u8> = b"Seal identity is not a release-mix policy";
 
 #[error]
-const EWrongGate: vector<u8> = b"Seal identity names a different certificate gate";
-
-#[error]
-const EWrongCertificateType: vector<u8> =
-    b"Record certificate type does not match the immutable gate";
+const EWrongGate: vector<u8> = b"Seal identity names a different Record gate";
 
 #[error]
 const EWrongRelease: vector<u8> = b"Record is a copy of a different release";
@@ -58,58 +51,23 @@ const EInvalidNonceLength: vector<u8> = b"Seal identity nonce must be exactly 32
 
 // === Objects ===
 
-/// Authority to add trusted certificate types without changing policy bytecode.
+/// Immutable namespace for this Record policy deployment.
 ///
-/// The capability is key-only so an external package cannot share or freeze it and
-/// turn an immutable borrow into public authority.
-public struct PolicyAdminCap has key {
+/// `RecordGate` is key-only and every production construction path freezes it before
+/// storage. Its object ID is part of every identity, so ciphertexts cannot be
+/// reinterpreted against another policy deployment.
+public struct RecordGate has key {
     id: UID,
 }
 
-/// Immutable authorization for one exact certificate type.
-///
-/// The stored name uses original package IDs, so a compatible certificate-package
-/// upgrade keeps the same identity. The gate itself is key-only and is always frozen
-/// by this module before it reaches storage.
-public struct CertificateGate has key {
-    id: UID,
-    certificate_type: TypeName,
-}
-
-// === Initialization and administration ===
+// === Initialization ===
 
 fun init(ctx: &mut TxContext) {
-    let sender = ctx.sender();
-    transfer::transfer(PolicyAdminCap { id: object::new(ctx) }, sender);
-    create_and_freeze_gate<Certificate>(ctx);
+    transfer::freeze_object(new_gate(ctx))
 }
 
-/// Add another trusted certificate type and freeze its gate permanently.
-///
-/// This is a non-public entry endpoint that requires the key-only admin capability.
-/// Clients pin Miso's reviewed package and gate configuration. Future certificate-type
-/// expansion happens by exercising this function with the current cap owner's input.
-entry fun add_certificate_gate<T: drop + store>(
-    _admin_cap: &PolicyAdminCap,
-    ctx: &mut TxContext,
-) {
-    create_and_freeze_gate<T>(ctx)
-}
-
-/// Transfer policy administration to another address.
-public fun transfer_admin_cap(admin_cap: PolicyAdminCap, recipient: address) {
-    transfer::transfer(admin_cap, recipient)
-}
-
-fun new_gate<T: drop + store>(ctx: &mut TxContext): CertificateGate {
-    CertificateGate {
-        id: object::new(ctx),
-        certificate_type: type_name::with_original_ids<T>(),
-    }
-}
-
-fun create_and_freeze_gate<T: drop + store>(ctx: &mut TxContext) {
-    transfer::freeze_object(new_gate<T>(ctx))
+fun new_gate(ctx: &mut TxContext): RecordGate {
+    RecordGate { id: object::new(ctx) }
 }
 
 // === Identity ===
@@ -134,30 +92,24 @@ public fun release_mix_identity(
     id
 }
 
-// === Views ===
-
-public fun certificate_type(gate: &CertificateGate): TypeName {
-    gate.certificate_type
-}
-
 // === Seal policy ===
 
-/// Approve release-mix key access for the current owner of a trusted record.
+/// Approve release-mix key access for the current owner of a Miso Record.
 ///
 /// This function is side-effect-free: both objects are immutable borrows and it
 /// returns nothing. The `id` argument must remain first for Seal's `ValidPtb` parser.
-entry fun seal_approve<T: drop + store>(
+entry fun seal_approve(
     id: vector<u8>,
-    gate: &CertificateGate,
-    record: &Record<T>,
+    gate: &RecordGate,
+    record: &Record,
 ) {
     assert_approved(id, gate, record)
 }
 
-fun assert_approved<T: drop + store>(
+fun assert_approved(
     id: vector<u8>,
-    gate: &CertificateGate,
-    record: &Record<T>,
+    gate: &RecordGate,
+    record: &Record,
 ) {
     assert!(id.length() >= IDENTITY_LENGTH, EInvalidIdentityLength);
 
@@ -172,7 +124,6 @@ fun assert_approved<T: drop + store>(
     assert!(schema == SCHEMA_VERSION, EUnsupportedSchema);
     assert!(policy_kind == RELEASE_MIX_POLICY_KIND, EWrongPolicyKind);
     assert!(gate_id == object::id(gate), EWrongGate);
-    assert!(gate.certificate_type == type_name::with_original_ids<T>(), EWrongCertificateType);
     assert!(release_id == record.release_id(), EWrongRelease);
 }
 
@@ -184,23 +135,15 @@ public fun init_for_testing(ctx: &mut TxContext) {
 }
 
 #[test_only]
-public fun add_certificate_gate_for_testing<T: drop + store>(
-    admin_cap: &PolicyAdminCap,
-    ctx: &mut TxContext,
-) {
-    add_certificate_gate<T>(admin_cap, ctx)
+public fun new_gate_for_testing(ctx: &mut TxContext): RecordGate {
+    new_gate(ctx)
 }
 
 #[test_only]
-public fun new_gate_for_testing<T: drop + store>(ctx: &mut TxContext): CertificateGate {
-    new_gate<T>(ctx)
-}
-
-#[test_only]
-public fun seal_approve_for_testing<T: drop + store>(
+public fun seal_approve_for_testing(
     id: vector<u8>,
-    gate: &CertificateGate,
-    record: &Record<T>,
+    gate: &RecordGate,
+    record: &Record,
 ) {
     seal_approve(id, gate, record)
 }
