@@ -9,10 +9,11 @@
 /// permanent tracklist. One encrypted session key can therefore remain canonical for
 /// a Recording even when that Recording appears on multiple Releases.
 ///
-/// Ownership is established by the combination of the key-only `Record`, this
-/// package's exact gate/release checks, and Seal key servers' `ValidPtb` plus
-/// current-owner simulation. The private `entry` boundary follows Seal guidance but
-/// is not, by itself, the ownership proof.
+/// Record now has `key + store`, so it may be shared or frozen. Move cannot inspect
+/// an input object's ownership mode, and an immutable Record reference is therefore
+/// no longer a sound proof of current address ownership. This revision keeps the
+/// established identity parser but deliberately fails every approval closed until a
+/// separate ownership/custody proof is designed.
 module miso_record_seal_policy::policy;
 
 use miso::release::Release;
@@ -54,6 +55,10 @@ const ERecordingNotInRelease: vector<u8> =
 
 #[error]
 const EInvalidNonceLength: vector<u8> = b"Seal identity nonce must be exactly 32 bytes";
+
+#[error]
+const EOwnershipUnprovable: vector<u8> =
+    b"Record ownership is not provable after Record gained the store ability";
 
 // === Objects ===
 
@@ -100,7 +105,8 @@ public fun recording_session_identity(
 
 // === Seal policy ===
 
-/// Approve Recording-session key access for the current owner of a Miso Record.
+/// Validate the Recording-session request, then fail closed because `&Record` no
+/// longer proves current ownership.
 ///
 /// This function is side-effect-free: both objects are immutable borrows and it
 /// returns nothing. The `id` argument must remain first for Seal's `ValidPtb` parser.
@@ -110,10 +116,11 @@ entry fun seal_approve(
     record: &Record,
     release: &Release,
 ) {
-    assert_approved(id, gate, record, release)
+    assert_identity_matches(id, gate, record, release);
+    abort EOwnershipUnprovable
 }
 
-fun assert_approved(
+fun assert_identity_matches(
     id: vector<u8>,
     gate: &RecordGate,
     record: &Record,
@@ -159,4 +166,14 @@ public fun seal_approve_for_testing(
     release: &Release,
 ) {
     seal_approve(id, gate, record, release)
+}
+
+#[test_only]
+public fun validate_identity_for_testing(
+    id: vector<u8>,
+    gate: &RecordGate,
+    record: &Record,
+    release: &Release,
+) {
+    assert_identity_matches(id, gate, record, release)
 }

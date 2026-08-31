@@ -9,28 +9,32 @@
 The Record is Miso's concrete, witness-authorized distribution object:
 
 ```move
-public struct Record has key {
+public struct Record has key, store {
     id: UID,
     release_id: ID,
+    registry_id: ID,
+    number: u64,
+    created_at_ms: u64,
+    purchase_currency: TypeName,
+    purchased_by: address,
 }
 ```
 
-Distribution-specific facts belong to the issuing package's state or events. Optional
-record state can still be attached under module-controlled dynamic-field keys, while
-read-only policies can use Record possession as authority.
+Additional extension state can still be attached under module-controlled dynamic-field
+keys.
 
 ## Packages
 
 | Package | Reads | Summary |
 |---------|-------|---------|
-| [`miso_record_seal_policy`](./miso_record_seal_policy) | `Record` | Frozen-gate Seal policy for release-mix keys, bound to an exact gate and release. |
+| [`miso_record_seal_policy`](./miso_record_seal_policy) | `Record` | Frozen-gate identity parser, currently fail-closed because `&Record` cannot prove ownership. |
 
 ## Dependencies
 
 Each package is independently publishable and pins reviewed source revisions:
 
 ```toml
-miso_record = { git = "https://github.com/misofm/record.git", rev = "a235ffd41e8d2b1e76e1c7bba292e5ee11074e5b" }
+miso_record = { git = "https://github.com/misofm/record.git", rev = "c3f5310e0f52b1aa5553636c7f8edae7d01d0010" }
 ```
 
 The Seal policy no longer depends on Pressing. Record's exact package type is the
@@ -41,12 +45,13 @@ instances of it.
 
 - **Extensions, not forks.** Packages use Record's public API and do not modify the
   core object.
-- **Possession is authority.** Record is key-only and exposes no share/freeze path.
-  Under Seal's checked simulation, a direct immutable Record input therefore proves
-  current address ownership.
+- **Ownership is not inferred from `&Record`.** Record has `store`, so a newly minted
+  value can be shared or frozen. Either mode makes immutable access available without
+  current address ownership, and Move cannot inspect the mode. The policy therefore
+  fails closed pending an explicit access-capability or custody design.
 - **One policy gate.** `miso_record_seal_policy` freezes a single `RecordGate` during
-  publication. The gate ID and release ID remain embedded in the established 98-byte
-  identity layout.
+  publication. The gate ID and Recording ID remain embedded in the established
+  98-byte identity layout; the supplied Release must bind them to the Record.
 
 ## Build and test
 

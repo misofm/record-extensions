@@ -10,6 +10,8 @@ use miso_record::record::{Self, Record};
 use miso_record::settings;
 use miso_record_seal_policy::policy::{Self, RecordGate};
 use std::unit_test::{assert_eq, destroy};
+use sui::clock;
+use sui::sui::SUI;
 use sui::test_scenario as ts;
 
 /// Stand-in for a distribution package's module-controlled witness.
@@ -28,12 +30,21 @@ fun nonce(): vector<u8> {
     ]
 }
 
-fun new_record(release_id: ID, number: u64, ctx: &mut TxContext): Record {
+fun new_record(release_id: ID, ctx: &mut TxContext): Record {
     let (mut settings, settings_admin) = settings::new_for_testing(ctx);
-    settings.authorize<DemoWitness>(&settings_admin);
-    let mut parent = object::new(ctx);
-    let record = record::mint(&mut parent, &settings, DemoWitness(), release_id, number);
-    parent.delete();
+    settings.set_witness<DemoWitness>(&settings_admin);
+    let mut registry = record::new_registry_for_testing(ctx);
+    let clk = clock::create_for_testing(ctx);
+    let record = record::mint<DemoWitness, SUI>(
+        &mut registry,
+        &settings,
+        DemoWitness(),
+        release_id,
+        &clk,
+        ctx,
+    );
+    clk.destroy_for_testing();
+    destroy(registry);
     destroy(settings);
     destroy(settings_admin);
     record
@@ -63,7 +74,7 @@ fun approval_case(
 ): (RecordGate, Record, Release, ReleaseAdminCap, vector<u8>) {
     let gate = policy::new_gate_for_testing(ctx);
     let (release, release_cap) = new_release(vector[recording_id], ctx);
-    let record = new_record(object::id(&release), 1, ctx);
+    let record = new_record(object::id(&release), ctx);
     let identity = policy::recording_session_identity(
         object::id(&gate),
         recording_id,
@@ -127,8 +138,8 @@ fun identity_builder_rejects_a_31_byte_nonce() {
 
 // === Approval ===
 
-#[test]
-fun a_record_for_a_release_containing_the_recording_is_approved() {
+#[test, expected_failure(abort_code = policy::EOwnershipUnprovable, location = policy)]
+fun a_matching_recording_session_fails_closed_without_an_ownership_proof() {
     let mut ctx = tx_context::dummy();
     let recording_id = id(@0xBEEF);
     let (gate, record, release, release_cap, identity) = approval_case(recording_id, &mut ctx);
@@ -144,7 +155,7 @@ fun a_record_for_a_release_containing_the_recording_is_approved() {
 }
 
 #[test]
-fun the_same_recording_identity_works_through_distinct_releases() {
+fun identity_validation_accepts_the_same_recording_through_distinct_releases() {
     let mut ctx = tx_context::dummy();
     let recording_id = id(@0xBEEF);
     let gate = policy::new_gate_for_testing(&mut ctx);
@@ -154,12 +165,12 @@ fun the_same_recording_identity_works_through_distinct_releases() {
         nonce(),
     );
     let (first_release, first_cap) = new_release(vector[recording_id], &mut ctx);
-    let first_record = new_record(object::id(&first_release), 1, &mut ctx);
+    let first_record = new_record(object::id(&first_release), &mut ctx);
     let (second_release, second_cap) = new_release(vector[recording_id], &mut ctx);
-    let second_record = new_record(object::id(&second_release), 2, &mut ctx);
+    let second_record = new_record(object::id(&second_release), &mut ctx);
 
-    policy::seal_approve_for_testing(identity, &gate, &first_record, &first_release);
-    policy::seal_approve_for_testing(
+    policy::validate_identity_for_testing(identity, &gate, &first_record, &first_release);
+    policy::validate_identity_for_testing(
         policy::recording_session_identity(object::id(&gate), recording_id, nonce()),
         &gate,
         &second_record,
@@ -173,6 +184,33 @@ fun the_same_recording_identity_works_through_distinct_releases() {
     destroy(first_cap);
     destroy(second_release);
     destroy(second_cap);
+}
+
+#[test, expected_failure(abort_code = policy::EOwnershipUnprovable, location = policy)]
+fun a_non_owner_cannot_use_a_shared_record_to_bypass_the_disabled_policy() {
+    let owner = @0xA;
+    let attacker = @0xB;
+    let recording_id = id(@0xBEEF);
+    let mut scenario = ts::begin(owner);
+    let gate = policy::new_gate_for_testing(scenario.ctx());
+    let (release, release_cap) = new_release(vector[recording_id], scenario.ctx());
+    let record = new_record(object::id(&release), scenario.ctx());
+    let identity = policy::recording_session_identity(
+        object::id(&gate),
+        recording_id,
+        nonce(),
+    );
+    transfer::public_share_object(record);
+
+    scenario.next_tx(attacker);
+    let record = scenario.take_shared<Record>();
+    policy::seal_approve_for_testing(identity, &gate, &record, &release);
+
+    ts::return_shared(record);
+    destroy(gate);
+    destroy(release);
+    destroy(release_cap);
+    scenario.end();
 }
 
 #[test, expected_failure(abort_code = policy::EWrongGate, location = policy)]

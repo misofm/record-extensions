@@ -1,7 +1,9 @@
 # `miso_record_seal_policy`
 
-A [Seal](https://docs.sui.io/sui-stack/seal/using-seal) policy for canonical
-Recording sessions unlocked by ownership of a Miso `Record`.
+A fail-closed [Seal](https://seal-docs.wal.app/UsingSeal) policy shell for canonical
+Recording sessions. It retains the established Recording-bound identity and validates
+the Record-to-Release-to-Recording relationship, but does not release keys until
+Record ownership has a sound proof compatible with `key + store`.
 
 ```move
 entry fun seal_approve(
@@ -12,15 +14,9 @@ entry fun seal_approve(
 )
 ```
 
-The package creates and freezes one key-only `RecordGate` during `init`. The
-policy proves three relationships: the identity names that gate and a
-Recording; the supplied Release is the immutable Release named by the Record;
-and that Recording appears in the Release's immutable tracklist.
-
-This Recording-bound identity is deliberate. One Recording may appear on
-several Releases. A purchaser of any such Release should unlock the same
-canonical Recording session without the session carrying or being rewritten
-with one encrypted key envelope per Release.
+The package creates and freezes one key-only `RecordGate` during `init`. The identity
+names that gate and one Recording. The supplied Release must be the immutable Release
+named by the Record, and that Recording must appear in its permanent tracklist.
 
 ## Identity
 
@@ -34,22 +30,25 @@ The Seal inner identity is exactly 98 raw bytes:
 | 34 | 32 | Recording ID/address |
 | 66 | 32 | random session-generation nonce |
 
-There are no inner BCS length prefixes. Choose a fresh cryptographically random
-nonce and AES key whenever the canonical delivery generation is replaced.
+There are no inner BCS length prefixes. Choose a fresh cryptographically random nonce
+and encryption key whenever the canonical delivery generation is replaced.
 
-## Security boundary
+## Why approval is disabled
 
-- The static Record type is the exact concrete format from the pinned package.
-- Record Settings governs the witness types allowed to create Records.
-- Record is key-only, so the PTB's owned input proves current ownership when
-  Seal key servers resolve and dry-run the transaction as the session signer.
-- The Release is shared but immutable in membership; its object ID must equal
-  `record.release_id()` and its tracklist must contain the identity's Recording.
-- The gate is frozen and its exact ID is part of the identity.
+Record now has `key + store`. A buyer can use framework ownership functions to wrap,
+freeze, or share a newly returned Record. Frozen and shared objects can be supplied by
+non-owners as immutable references, and Move has no API that reveals the ownership
+mode inside `seal_approve`. Seal evaluates the Move call with a full-node dry run; it
+cannot strengthen a predicate the Move code does not express.
 
-Previously fetched AES keys and plaintext cannot be revoked. Transferring a
-Record prevents a fresh owner check from succeeding but cannot erase bytes the
-former owner retained.
+Consequently, `seal_approve` validates the complete identity, exact gate, exact
+Record-to-Release relationship, and Recording membership, then aborts with
+`EOwnershipUnprovable`. This prevents an apparently valid but bypassable policy from
+reaching production. A future revision needs an explicit transfer-aware access
+capability or a custody-specific proof.
+
+Previously fetched keys and plaintext cannot be revoked. Disabling this package
+revision only prevents new key releases through it.
 
 ## Build and test
 
@@ -57,3 +56,12 @@ former owner retained.
 sui move build
 sui move test
 ```
+
+Tests cover the Recording identity and membership rules, fail-closed matching
+requests, and a non-owner shared-Record bypass attempt. Compiler probes additionally
+verify that outside packages cannot construct `RecordGate` or call private
+`seal_approve`.
+
+## License
+
+[Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0) © Miso Labs, Inc.
