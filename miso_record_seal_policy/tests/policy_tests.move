@@ -4,20 +4,14 @@
 #[test_only]
 module miso_record_seal_policy::policy_tests;
 
-use miso_pressing::certificate::Certificate;
-use miso_pressing::listing;
-use miso_pressing::pressing;
 use miso_record::record::{Self, Record};
-use miso_record_seal_policy::policy::{Self, CertificateGate, PolicyAdminCap};
-use std::type_name;
+use miso_record::settings;
+use miso_record_seal_policy::policy::{Self, RecordGate};
 use std::unit_test::{assert_eq, destroy};
-use sui::balance;
-use sui::clock;
-use sui::sui::SUI;
 use sui::test_scenario as ts;
 
-public struct DemoCertificate(u64) has drop, store;
-public struct OtherCertificate has drop, store {}
+/// Stand-in for a distribution package's module-controlled witness.
+public struct DemoWitness() has drop;
 
 fun id(value: address): ID {
     object::id_from_address(value)
@@ -32,25 +26,23 @@ fun nonce(): vector<u8> {
     ]
 }
 
-fun new_record<T: drop + store>(
-    certificate: T,
-    release_id: ID,
-    number: u64,
-    ctx: &mut TxContext,
-): Record<T> {
+fun new_record(release_id: ID, number: u64, ctx: &mut TxContext): Record {
+    let (mut settings, settings_admin) = settings::new_for_testing(ctx);
+    settings.authorize<DemoWitness>(&settings_admin);
     let mut parent = object::new(ctx);
-    let record = record::new(&mut parent, certificate, release_id, number);
+    let record = record::mint(&mut parent, &settings, DemoWitness(), release_id, number);
     parent.delete();
+    destroy(settings);
+    destroy(settings_admin);
     record
 }
 
-fun approval_case<T: drop + store>(
-    certificate: T,
+fun approval_case(
     release_id: ID,
     ctx: &mut TxContext,
-): (CertificateGate, Record<T>, vector<u8>) {
-    let gate = policy::new_gate_for_testing<T>(ctx);
-    let record = new_record(certificate, release_id, 1, ctx);
+): (RecordGate, Record, vector<u8>) {
+    let gate = policy::new_gate_for_testing(ctx);
+    let record = new_record(release_id, 1, ctx);
     let identity = policy::release_mix_identity(object::id(&gate), release_id, nonce());
     (gate, record, identity)
 }
@@ -58,68 +50,13 @@ fun approval_case<T: drop + store>(
 // === Init and gate lifecycle ===
 
 #[test]
-fun init_transfers_the_admin_cap_and_freezes_the_pressing_gate() {
+fun init_freezes_exactly_one_record_gate() {
     let owner = @0xA;
     let mut scenario = ts::begin(owner);
     policy::init_for_testing(scenario.ctx());
 
     scenario.next_tx(owner);
-    assert!(scenario.has_most_recent_for_sender<PolicyAdminCap>());
-    let admin_cap = scenario.take_from_sender<PolicyAdminCap>();
-    let gate = scenario.take_immutable<CertificateGate>();
-    assert_eq!(
-        policy::certificate_type(&gate),
-        type_name::with_original_ids<Certificate>(),
-    );
-
-    scenario.return_to_sender(admin_cap);
-    ts::return_immutable(gate);
-    scenario.end();
-}
-
-#[test]
-fun admin_can_add_and_freeze_a_gate_later() {
-    let owner = @0xA;
-    let mut scenario = ts::begin(owner);
-    policy::init_for_testing(scenario.ctx());
-
-    scenario.next_tx(owner);
-    let admin_cap = scenario.take_from_sender<PolicyAdminCap>();
-    policy::add_certificate_gate_for_testing<DemoCertificate>(&admin_cap, scenario.ctx());
-    scenario.return_to_sender(admin_cap);
-
-    scenario.next_tx(owner);
-    let gate = scenario.take_immutable<CertificateGate>();
-    assert_eq!(
-        policy::certificate_type(&gate),
-        type_name::with_original_ids<DemoCertificate>(),
-    );
-    ts::return_immutable(gate);
-    scenario.end();
-}
-
-#[test]
-fun transferred_admin_cap_can_add_a_gate() {
-    let first_admin = @0xA;
-    let next_admin = @0xB;
-    let mut scenario = ts::begin(first_admin);
-    policy::init_for_testing(scenario.ctx());
-
-    scenario.next_tx(first_admin);
-    let admin_cap = scenario.take_from_sender<PolicyAdminCap>();
-    policy::transfer_admin_cap(admin_cap, next_admin);
-
-    scenario.next_tx(next_admin);
-    let admin_cap = scenario.take_from_sender<PolicyAdminCap>();
-    policy::add_certificate_gate_for_testing<OtherCertificate>(&admin_cap, scenario.ctx());
-    scenario.return_to_sender(admin_cap);
-
-    scenario.next_tx(next_admin);
-    let gate = scenario.take_immutable<CertificateGate>();
-    assert_eq!(
-        policy::certificate_type(&gate),
-        type_name::with_original_ids<OtherCertificate>(),
-    );
+    let gate = scenario.take_immutable<RecordGate>();
     ts::return_immutable(gate);
     scenario.end();
 }
@@ -154,36 +91,10 @@ fun identity_builder_rejects_a_31_byte_nonce() {
 // === Approval ===
 
 #[test]
-fun pressing_gate_approves_an_actual_pressed_record() {
+fun matching_gate_and_release_are_approved_without_mutation() {
     let mut ctx = tx_context::dummy();
     let release_id = id(@0xBEEF);
-    let clock = clock::create_for_testing(&mut ctx);
-    let (mut pressing, admin_cap) = pressing::new_for_testing(release_id, &mut ctx);
-    let mut listing = listing::new_for_testing<SUI>(
-        release_id,
-        object::id(&pressing),
-        listing::new_fixed_price(0),
-        listing::new_enabled_state(),
-        &mut ctx,
-    );
-    let record = listing.buy(&mut pressing, balance::zero<SUI>(), &clock, &ctx);
-    let gate = policy::new_gate_for_testing<Certificate>(&mut ctx);
-    let identity = policy::release_mix_identity(object::id(&gate), release_id, nonce());
-
-    policy::seal_approve_for_testing(identity, &gate, &record);
-
-    record.destroy();
-    destroy(gate);
-    listing.destroy_for_testing();
-    pressing.destroy_for_testing(admin_cap);
-    clock.destroy_for_testing();
-}
-
-#[test]
-fun matching_gate_type_id_and_release_are_approved_without_mutation() {
-    let mut ctx = tx_context::dummy();
-    let release_id = id(@0xBEEF);
-    let (gate, record, identity) = approval_case(DemoCertificate(42), release_id, &mut ctx);
+    let (gate, record, identity) = approval_case(release_id, &mut ctx);
     let gate_id = object::id(&gate);
     let record_id = object::id(&record);
 
@@ -192,25 +103,6 @@ fun matching_gate_type_id_and_release_are_approved_without_mutation() {
     assert_eq!(object::id(&gate), gate_id);
     assert_eq!(object::id(&record), record_id);
     assert_eq!(record.release_id(), release_id);
-    assert_eq!(record.certificate().0, 42);
-    assert_eq!(
-        policy::certificate_type(&gate),
-        type_name::with_original_ids<DemoCertificate>(),
-    );
-
-    record.destroy();
-    destroy(gate);
-}
-
-#[test, expected_failure(abort_code = policy::EWrongCertificateType, location = policy)]
-fun gate_rejects_another_certificate_type() {
-    let mut ctx = tx_context::dummy();
-    let release_id = id(@0xBEEF);
-    let gate = policy::new_gate_for_testing<DemoCertificate>(&mut ctx);
-    let record = new_record(OtherCertificate {}, release_id, 1, &mut ctx);
-    let identity = policy::release_mix_identity(object::id(&gate), release_id, nonce());
-
-    policy::seal_approve_for_testing(identity, &gate, &record);
 
     record.destroy();
     destroy(gate);
@@ -220,7 +112,7 @@ fun gate_rejects_another_certificate_type() {
 fun identity_for_another_gate_is_rejected() {
     let mut ctx = tx_context::dummy();
     let release_id = id(@0xBEEF);
-    let (gate, record, _) = approval_case(DemoCertificate(1), release_id, &mut ctx);
+    let (gate, record, _) = approval_case(release_id, &mut ctx);
     let identity = policy::release_mix_identity(id(@0xBAD), release_id, nonce());
 
     policy::seal_approve_for_testing(identity, &gate, &record);
@@ -232,7 +124,7 @@ fun identity_for_another_gate_is_rejected() {
 #[test, expected_failure(abort_code = policy::EWrongRelease, location = policy)]
 fun record_for_another_release_is_rejected() {
     let mut ctx = tx_context::dummy();
-    let (gate, record, _) = approval_case(DemoCertificate(1), id(@0xBEEF), &mut ctx);
+    let (gate, record, _) = approval_case(id(@0xBEEF), &mut ctx);
     let identity = policy::release_mix_identity(object::id(&gate), id(@0xCAFE), nonce());
 
     policy::seal_approve_for_testing(identity, &gate, &record);
@@ -247,7 +139,7 @@ fun record_for_another_release_is_rejected() {
 fun truncated_identity_is_rejected_before_parsing() {
     let mut ctx = tx_context::dummy();
     let release_id = id(@0xBEEF);
-    let (gate, record, mut identity) = approval_case(DemoCertificate(1), release_id, &mut ctx);
+    let (gate, record, mut identity) = approval_case(release_id, &mut ctx);
     let _ = identity.pop_back();
 
     policy::seal_approve_for_testing(identity, &gate, &record);
@@ -260,7 +152,7 @@ fun truncated_identity_is_rejected_before_parsing() {
 fun trailing_identity_bytes_are_rejected() {
     let mut ctx = tx_context::dummy();
     let release_id = id(@0xBEEF);
-    let (gate, record, mut identity) = approval_case(DemoCertificate(1), release_id, &mut ctx);
+    let (gate, record, mut identity) = approval_case(release_id, &mut ctx);
     identity.push_back(0);
 
     policy::seal_approve_for_testing(identity, &gate, &record);
@@ -273,7 +165,7 @@ fun trailing_identity_bytes_are_rejected() {
 fun unknown_schema_is_rejected() {
     let mut ctx = tx_context::dummy();
     let release_id = id(@0xBEEF);
-    let (gate, record, mut identity) = approval_case(DemoCertificate(1), release_id, &mut ctx);
+    let (gate, record, mut identity) = approval_case(release_id, &mut ctx);
     *&mut identity[0] = 2;
 
     policy::seal_approve_for_testing(identity, &gate, &record);
@@ -286,7 +178,7 @@ fun unknown_schema_is_rejected() {
 fun another_policy_kind_is_rejected() {
     let mut ctx = tx_context::dummy();
     let release_id = id(@0xBEEF);
-    let (gate, record, mut identity) = approval_case(DemoCertificate(1), release_id, &mut ctx);
+    let (gate, record, mut identity) = approval_case(release_id, &mut ctx);
     *&mut identity[1] = 2;
 
     policy::seal_approve_for_testing(identity, &gate, &record);
