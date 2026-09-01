@@ -6,17 +6,19 @@
 > First-party extension packages for the [Miso Record](https://github.com/misofm/record)
 > on [Sui](https://sui.io).
 
-The Record is Miso's concrete, witness-authorized distribution object:
+The Record is Miso's concrete, Pressing-issued purchase object:
 
 ```move
 public struct Record has key, store {
     id: UID,
     release_id: ID,
-    registry_id: ID,
-    number: u64,
-    created_at_ms: u64,
+    pressing_id: ID,
+    edition: u16,
+    number: u32,
     purchase_currency: TypeName,
+    purchase_price: u64,
     purchased_by: address,
+    purchased_timestamp_ms: u64,
 }
 ```
 
@@ -34,12 +36,15 @@ keys.
 Each package is independently publishable and pins reviewed source revisions:
 
 ```toml
-miso_record = { git = "https://github.com/misofm/record.git", rev = "c3f5310e0f52b1aa5553636c7f8edae7d01d0010" }
+miso_record = { git = "https://github.com/misofm/record.git", rev = "8a331e2880723aa0330dee00c55525aa6b4c1516" }
+miso = { git = "https://github.com/misonetwork/protocol.git", rev = "6de5f9881ee62c81c57ce16832efc24dc33ae429" }
 ```
 
-The Seal policy no longer depends on Pressing. Record's exact package type is the
-format boundary, and `miso_record::Settings` decides which witness types can create
-instances of it.
+Record's exact package type is the format boundary. Its Pressing authorizes the
+distributor witness types that may create Records and owns edition-local issuance.
+The Seal policy reads only the resulting Record and immutable Release. Record and
+the policy pin the same Protocol revision, so both network lock graphs resolve one
+Protocol package and one immutable BPS dependency.
 
 ## Design notes
 
@@ -57,17 +62,19 @@ instances of it.
 
 ```sh
 cd miso_record_seal_policy
-sui move build
-sui move test
+sui move test --build-env testnet
+sui move test --build-env mainnet
+sui move test --build-env testnet --coverage
+sui move coverage summary
 ```
 
 ## Related
 
 | Repo | Holds |
 |------|-------|
-| [`miso-record`](https://github.com/misofm/record) | Concrete Record and witness Settings |
-| [`miso-pressing`](https://github.com/misofm/pressing) | First-party sale path and authorized mint witness |
-| [`miso-protocol`](https://github.com/misonetwork/miso-protocol) | `Composition`, `Recording`, `Release` |
+| [`record`](https://github.com/misofm/record) | Record and its edition-local Pressing lifecycle |
+| [`record-shop`](https://github.com/misofm/record-shop) | Primary-sale Listing and authorized distributor witness |
+| [`protocol`](https://github.com/misonetwork/protocol) | `Composition`, `Recording`, `Release` |
 
 ## License
 

@@ -53,14 +53,20 @@ revision only prevents new key releases through it.
 ## Build and test
 
 ```sh
-sui move build
-sui move test
+sui move test --build-env testnet
+sui move test --build-env mainnet
+sui move test --build-env testnet --coverage
+sui move coverage summary
 ```
 
 Tests cover the Recording identity and membership rules, fail-closed matching
-requests, and a non-owner shared-Record bypass attempt. Compiler probes additionally
-verify that outside packages cannot construct `RecordGate` or call private
-`seal_approve`.
+requests, a non-owner shared-Record bypass attempt, and the current end-to-end
+Release → Pressing → authorized distributor → Record mint path. The production
+policy module has literal 100% Move coverage.
+
+The package pins Record `8a331e28…` and Protocol `6de5f988…`. Record pins that same
+Protocol revision, so the Testnet and Mainnet lock graphs contain no duplicate
+legacy Protocol or BPS sources.
 
 ## License
 

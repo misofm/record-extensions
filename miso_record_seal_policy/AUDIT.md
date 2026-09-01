@@ -1,10 +1,11 @@
 # Security review — `miso_record_seal_policy`
 
-**Date:** 2026-09-01
+**Date:** 2026-09-02
 
 **Scope:** `sources/policy.move`, Record dependency
-`c3f5310e0f52b1aa5553636c7f8edae7d01d0010`, the protocol Release dependency, and
-the Seal evaluator contract.
+`8a331e2880723aa0330dee00c55525aa6b4c1516`, Protocol dependency
+`6de5f9881ee62c81c57ce16832efc24dc33ae429`, both Testnet and Mainnet lock graphs,
+and the Seal evaluator contract.
 
 ## Finding and disposition
 
@@ -37,9 +38,10 @@ obligation.
 ## State and authority
 
 - `RecordGate` is key-only; `init` creates one and freezes it immediately.
-- Record creation requires the one witness named by Record Settings, but authenticity
-  is distinct from current ownership.
-- The policy has no Pressing dependency or admin capability.
+- Record creation is edition-local: a Pressing owns supply and authorizes the
+  distributor witness consumed by `pressing::mint`. Authenticity remains distinct
+  from current ownership.
+- The production policy imports no Pressing API and holds no admin capability.
 - A Recording-bound identity remains reusable across legitimate Releases containing
   that Recording; a test-only validator proves this relationship independently of the
   deliberately disabled ownership decision.
@@ -52,14 +54,24 @@ free evaluation requirement.
 
 ## Adversarial verification
 
-Thirteen Move tests cover gate freezing, golden identity bytes, relationship validation
-across distinct Releases, fail-closed matching requests, a non-owner attempting
-approval with a shared Record, wrong gate, substituted Release, Recording outside the
-Release, malformed/trailing identity bytes, and invalid nonce length. Test Records
-are minted through a Registry and explicitly selected witness.
+Thirteen Move tests pass under both `--build-env testnet` and `--build-env mainnet`.
+They cover gate freezing, golden identity bytes, relationship validation across
+distinct Releases, fail-closed matching requests, a non-owner attempting approval
+with a shared Record, wrong gate, substituted Release, Recording outside the Release,
+malformed/trailing identity bytes, and invalid nonce length. Test Records follow the
+current production lifecycle: create a Release, derive its Pressing, authorize a
+distributor witness, and mint through that Pressing. The production `policy` module
+has literal 100% Move coverage.
 
 External-package compiler probes reject both `RecordGate` construction and direct
 calls to private `seal_approve`.
+
+## Dependency graph
+
+Record `8a331e28…` and this package both pin Protocol `6de5f988…`, which pins BPS
+`4ca1972a…` and Share `561cfad9…`. The regenerated Testnet and Mainnet lock graphs
+each contain exactly one Record, Protocol, BPS, Share, Sui, and MoveStdlib source.
+No override or legacy suffixed dependency entry remains.
 
 ## Required redesign
 
