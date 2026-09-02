@@ -1,4 +1,4 @@
-# Security review — `miso_record_seal_policy`
+# Security review — `record_seal_policy`
 
 **Date:** 2026-09-02
 

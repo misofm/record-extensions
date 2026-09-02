@@ -29,7 +29,7 @@ keys.
 
 | Package | Reads | Summary |
 |---------|-------|---------|
-| [`miso_record_seal_policy`](./miso_record_seal_policy) | `Record` | Frozen-gate identity parser, currently fail-closed because `&Record` cannot prove ownership. |
+| [`record_seal_policy`](./record_seal_policy) | `Record` | Frozen-gate identity parser, currently fail-closed because `&Record` cannot prove ownership. |
 
 ## Dependencies
 
@@ -54,14 +54,14 @@ Protocol package and one immutable BPS dependency.
   value can be shared or frozen. Either mode makes immutable access available without
   current address ownership, and Move cannot inspect the mode. The policy therefore
   fails closed pending an explicit access-capability or custody design.
-- **One policy gate.** `miso_record_seal_policy` freezes a single `RecordGate` during
+- **One policy gate.** `record_seal_policy` freezes a single `RecordGate` during
   publication. The gate ID and Recording ID remain embedded in the established
   98-byte identity layout; the supplied Release must bind them to the Record.
 
 ## Build and test
 
 ```sh
-cd miso_record_seal_policy
+cd record_seal_policy
 sui move test --build-env testnet
 sui move test --build-env mainnet
 sui move test --build-env testnet --coverage

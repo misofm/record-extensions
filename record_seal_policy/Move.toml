@@ -1,5 +1,5 @@
 [package]
-name = "miso_record_seal_policy"
+name = "record_seal_policy"
 edition = "2024"
 license = "Apache-2.0"
 authors = ["Miso Labs, Inc. (build@miso.network)"]

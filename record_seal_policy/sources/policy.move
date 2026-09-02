@@ -7,7 +7,7 @@
 /// A caller supplies a `&Record` and the Release named by that Record. Release
 /// access is bound directly to that Release. Composition and Recording access
 /// additionally select one track and bind its member ID to the supplied object.
-module miso_record_seal_policy::policy;
+module record_seal_policy::policy;
 
 use miso::composition::Composition;
 use miso::recording::Recording;

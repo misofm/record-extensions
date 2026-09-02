@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #[test_only]
-module miso_record_seal_policy::policy_tests;
+module record_seal_policy::policy_tests;
 
 use miso::composition::{Self, Composition, CompositionAdminCap};
 use miso::recording::{Self, Recording, RecordingAdminCap};
@@ -10,7 +10,7 @@ use miso::release::{Self, Release, ReleaseAdminCap};
 use miso::{test_helpers, track};
 use miso_record::pressing::{Self, Pressing, PressingAdminCap};
 use miso_record::record::{Self, Record};
-use miso_record_seal_policy::policy;
+use record_seal_policy::policy;
 use std::unit_test::destroy;
 use sui::clock;
 use sui::sui::SUI;

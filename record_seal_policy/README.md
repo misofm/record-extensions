@@ -1,4 +1,4 @@
-# `miso_record_seal_policy`
+# `record_seal_policy`
 
 A [Seal](https://docs.sui.io/sui-stack/seal/using-seal) policy package that
 gates Composition, Recording, and Release data with a Miso Record.

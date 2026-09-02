@@ -34,7 +34,7 @@ use_environment = "mainnet"
 manifest_digest = "EEDEAD62394EA867892C56EBC049255EDE0950623AC71D1C520147E86A7FE559"
 deps = { miso = "miso", std = "MoveStdlib", sui = "Sui" }
 
-[pinned.mainnet.miso_record_seal_policy]
+[pinned.mainnet.record_seal_policy]
 source = { root = true }
 use_environment = "mainnet"
 manifest_digest = "5F5CD4A50F31CBDAF39E1BB259B032BED7472CAAF87F01A4ECEED73BA8CA9850"
@@ -76,7 +76,7 @@ use_environment = "testnet"
 manifest_digest = "74D087E17D5C54FF2A77A9FF2B1D6FF17EA11D2B0D89C92E4586D983D4622FEF"
 deps = { miso = "miso", std = "MoveStdlib", sui = "Sui" }
 
-[pinned.testnet.miso_record_seal_policy]
+[pinned.testnet.record_seal_policy]
 source = { root = true }
 use_environment = "testnet"
 manifest_digest = "AE2EA5BB6FF1DD7C07C0D4F6E3CDDA041893B0C73A538AAB9AF4C2CE8786E423"
