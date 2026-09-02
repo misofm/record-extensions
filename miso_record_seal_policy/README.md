@@ -1,72 +1,65 @@
 # `miso_record_seal_policy`
 
-A fail-closed [Seal](https://seal-docs.wal.app/UsingSeal) policy shell for canonical
-Recording sessions. It retains the established Recording-bound identity and validates
-the Record-to-Release-to-Recording relationship, but does not release keys until
-Record ownership has a sound proof compatible with `key + store`.
+A [Seal](https://docs.sui.io/sui-stack/seal/using-seal) policy package that
+gates Composition, Recording, and Release data with a Miso Record.
 
 ```move
-entry fun seal_approve(
+entry fun seal_approve_composition<CompositionShare>(
     id: vector<u8>,
-    gate: &RecordGate,
+    record: &Record,
+    release: &Release,
+    composition: &Composition<CompositionShare>,
+)
+
+entry fun seal_approve_recording<RecordingShare, CompositionShare>(
+    id: vector<u8>,
+    record: &Record,
+    release: &Release,
+    recording: &Recording<RecordingShare, CompositionShare>,
+)
+
+entry fun seal_approve_release(
+    id: vector<u8>,
     record: &Record,
     release: &Release,
 )
 ```
 
-The package creates and freezes one key-only `RecordGate` during `init`. The identity
-names that gate and one Recording. The supplied Release must be the immutable Release
-named by the Record, and that Recording must appear in its permanent tracklist.
+Every function verifies that `record.release_id()` names the supplied Release.
+Composition and Recording policies also select a track and verify both the
+track member ID and the supplied object's ID.
 
-## Identity
+## Identities
 
-The Seal inner identity is exactly 98 raw bytes:
+The inner Seal identities use raw fixed-width fields without inner BCS vector
+length prefixes:
 
-| Offset | Length | Meaning |
-|---:|---:|---|
-| 0 | 1 | schema version: `1` |
-| 1 | 1 | policy kind: `1` (Recording session) |
-| 2 | 32 | immutable `RecordGate` object ID/address |
-| 34 | 32 | Recording ID/address |
-| 66 | 32 | random session-generation nonce |
+| Policy | Layout | Length |
+|---|---|---:|
+| Composition | `release_id (32) \| track_idx (1) \| composition_id (32)` | 65 bytes |
+| Recording | `release_id (32) \| track_idx (1) \| recording_id (32)` | 65 bytes |
+| Release | `release_id (32)` | 32 bytes |
 
-There are no inner BCS length prefixes. Choose a fresh cryptographically random nonce
-and encryption key whenever the canonical delivery generation is replaced.
+Clients and SDKs construct these inner identities offchain according to the
+layouts above.
 
-## Why approval is disabled
+## Record-reference semantics
 
-Record now has `key + store`. A buyer can use framework ownership functions to wrap,
-freeze, or share a newly returned Record. Frozen and shared objects can be supplied by
-non-owners as immutable references, and Move has no API that reveals the ownership
-mode inside `seal_approve`. Seal evaluates the Move call with a full-node dry run; it
-cannot strengthen a predicate the Move code does not express.
-
-Consequently, `seal_approve` validates the complete identity, exact gate, exact
-Record-to-Release relationship, and Recording membership, then aborts with
-`EOwnershipUnprovable`. This prevents an apparently valid but bypassable policy from
-reaching production. A future revision needs an explicit transfer-aware access
-capability or a custody-specific proof.
-
-Previously fetched keys and plaintext cannot be revoked. Disabling this package
-revision only prevents new key releases through it.
+The policy deliberately treats the ability to supply a usable `&Record` as the
+entitlement. Address-owned Records can only be supplied by their owner. If a
+Record is shared or frozen, other callers can supply its reference and satisfy
+this policy.
 
 ## Build and test
 
 ```sh
 sui move test --build-env testnet
 sui move test --build-env mainnet
-sui move test --build-env testnet --coverage
-sui move coverage summary
 ```
 
-Tests cover the Recording identity and membership rules, fail-closed matching
-requests, a non-owner shared-Record bypass attempt, and the current end-to-end
-Release → Pressing → authorized distributor → Record mint path. The production
-policy module has literal 100% Move coverage.
-
-The package pins Record `8a331e28…` and Protocol `6de5f988…`. Record pins that same
-Protocol revision, so the Testnet and Mainnet lock graphs contain no duplicate
-legacy Protocol or BPS sources.
+Tests cover all three successful approval paths, invalid track indices,
+malformed identity lengths, and multi-transaction scenarios in which a Record
+owner supplies the wrong shared Composition, Recording, or Release.
 
 ## License
 
