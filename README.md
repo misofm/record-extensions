@@ -37,7 +37,7 @@ Each package is independently publishable and pins reviewed source revisions:
 
 ```toml
 miso_record = { git = "https://github.com/misofm/record.git", rev = "8a331e2880723aa0330dee00c55525aa6b4c1516" }
-miso = { git = "https://github.com/misonetwork/protocol.git", rev = "6de5f9881ee62c81c57ce16832efc24dc33ae429" }
+miso = { git = "https://github.com/misofm/protocol.git", rev = "6de5f9881ee62c81c57ce16832efc24dc33ae429" }
 ```
 
 Record's exact package type is the format boundary. Its Pressing authorizes the
@@ -74,7 +74,7 @@ sui move coverage summary
 |------|-------|
 | [`record`](https://github.com/misofm/record) | Record and its edition-local Pressing lifecycle |
 | [`record-shop`](https://github.com/misofm/record-shop) | Primary-sale Listing and authorized distributor witness |
-| [`protocol`](https://github.com/misonetwork/protocol) | `Composition`, `Recording`, `Release` |
+| [`protocol`](https://github.com/misofm/protocol) | `Composition`, `Recording`, `Release` |
 
 ## License
 
