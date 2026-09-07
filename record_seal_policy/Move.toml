@@ -5,5 +5,5 @@ license = "Apache-2.0"
 authors = ["Miso Labs, Inc. (build@miso.network)"]
 
 [dependencies]
-miso_record = { git = "https://github.com/misofm/record.git", rev = "9114508f2b8e4e4ee5876a7d21bb074009ef8bc7" }
-miso = { git = "https://github.com/misofm/protocol.git", rev = "22e247741581df95ec02f61b5e795dc44c31b9fb" }
+miso_record = { git = "https://github.com/misofm/record.git", rev = "2ae6ab937752d9cc83a70d1cf78bde90f564a438" }
+miso = { git = "https://github.com/misofm/protocol.git", rev = "ffa0e38b8ba4815d81de1076101ea37d2c71c623" }
