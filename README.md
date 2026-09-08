@@ -36,15 +36,15 @@ keys.
 Each package is independently publishable and pins reviewed source revisions:
 
 ```toml
-miso_record = { git = "https://github.com/misofm/record.git", rev = "8a331e2880723aa0330dee00c55525aa6b4c1516" }
-miso = { git = "https://github.com/misofm/protocol.git", rev = "6de5f9881ee62c81c57ce16832efc24dc33ae429" }
+miso_record = { git = "https://github.com/misofm/record.git", rev = "8ece285b087cecf2892a19bcb13a7360e92b2937" }
+musicos = { git = "https://github.com/misofm/musicos.git", rev = "4fed48b2b5632122fb677d742881259c65b1bc78" }
 ```
 
 Record's exact package type is the format boundary. Its Pressing authorizes the
 distributor witness types that may create Records and owns edition-local issuance.
 The Seal policy reads only the resulting Record and immutable Release. Record and
-the policy pin the same Protocol revision, so both network lock graphs resolve one
-Protocol package and one immutable BPS dependency.
+the policy pin the same MusicOS revision, so both network lock graphs resolve one
+MusicOS package and one immutable BPS dependency.
 
 ## Design notes
 
@@ -74,7 +74,7 @@ sui move coverage summary
 |------|-------|
 | [`record`](https://github.com/misofm/record) | Record and its edition-local Pressing lifecycle |
 | [`record-shop`](https://github.com/misofm/record-shop) | Primary-sale Listing and authorized distributor witness |
-| [`protocol`](https://github.com/misofm/protocol) | `Composition`, `Recording`, `Release` |
+| [`musicos`](https://github.com/misofm/musicos) | `Composition`, `Recording`, `Release` |
 
 ## License
 

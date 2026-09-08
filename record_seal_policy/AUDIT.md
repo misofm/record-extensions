@@ -3,8 +3,8 @@
 **Date:** 2026-09-02
 
 **Scope:** `sources/policy.move`, Record dependency
-`9114508f2b8e4e4ee5876a7d21bb074009ef8bc7`, and Protocol dependency
-`22e247741581df95ec02f61b5e795dc44c31b9fb`.
+`8ece285b087cecf2892a19bcb13a7360e92b2937`, and MusicOS dependency
+`4fed48b2b5632122fb677d742881259c65b1bc78`.
 
 ## Policy surface
 

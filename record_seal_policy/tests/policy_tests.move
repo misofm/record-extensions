@@ -4,10 +4,10 @@
 #[test_only]
 module record_seal_policy::policy_tests;
 
-use miso::composition::{Self, Composition, CompositionAdminCap};
-use miso::recording::{Self, Recording, RecordingAdminCap};
-use miso::release::{Self, Release, ReleaseAdminCap};
-use miso::{test_helpers, track};
+use musicos::composition::{Self, Composition, CompositionAdminCap};
+use musicos::recording::{Self, Recording, RecordingAdminCap};
+use musicos::release::{Self, Release, ReleaseAdminCap};
+use musicos::{test_helpers, track};
 use miso_record::pressing::{Self, Pressing, PressingAdminCap};
 use miso_record::record::{Self, Record};
 use record_seal_policy::policy;

@@ -9,9 +9,9 @@
 /// additionally select one track and bind its member ID to the supplied object.
 module record_seal_policy::policy;
 
-use miso::composition::Composition;
-use miso::recording::Recording;
-use miso::release::Release;
+use musicos::composition::Composition;
+use musicos::recording::Recording;
+use musicos::release::Release;
 use miso_record::record::{Self, Record};
 use sui::bcs;
 
