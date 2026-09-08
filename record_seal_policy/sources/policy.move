@@ -12,7 +12,7 @@ module record_seal_policy::policy;
 use musicos::composition::Composition;
 use musicos::recording::Recording;
 use musicos::release::Release;
-use miso_record::record::{Self, Record};
+use record::record::{Self, Record};
 use sui::bcs;
 
 // === Errors ===

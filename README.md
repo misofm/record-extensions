@@ -36,7 +36,7 @@ keys.
 Each package is independently publishable and pins reviewed source revisions:
 
 ```toml
-miso_record = { git = "https://github.com/misofm/record.git", rev = "8ece285b087cecf2892a19bcb13a7360e92b2937" }
+record = { git = "https://github.com/misofm/record.git", rev = "8ece285b087cecf2892a19bcb13a7360e92b2937" }
 musicos = { git = "https://github.com/misofm/musicos.git", rev = "4fed48b2b5632122fb677d742881259c65b1bc78" }
 ```
 
