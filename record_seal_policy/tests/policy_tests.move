@@ -13,6 +13,7 @@ use record::record::{Self, Record};
 use record_seal_policy::policy;
 use std::unit_test::destroy;
 use sui::clock;
+use sui::event;
 use sui::sui::SUI;
 use sui::test_scenario as ts;
 
@@ -124,12 +125,14 @@ fun a_record_approves_its_release() {
         pressing,
         pressing_cap,
     ) = policy_case(&mut ctx);
+    let events_before = event::num_events();
 
     policy::seal_approve_release_for_testing(
         release_identity(object::id(&release)),
         &record,
         &release,
     );
+    assert!(event::num_events() == events_before);
 
     destroy_case(
         composition,
@@ -158,6 +161,7 @@ fun a_record_approves_the_recording_at_the_selected_track() {
         pressing,
         pressing_cap,
     ) = policy_case(&mut ctx);
+    let events_before = event::num_events();
 
     policy::seal_approve_recording_for_testing(
         track_member_identity(object::id(&release), 0, object::id(&recording)),
@@ -165,6 +169,7 @@ fun a_record_approves_the_recording_at_the_selected_track() {
         &release,
         &recording,
     );
+    assert!(event::num_events() == events_before);
 
     destroy_case(
         composition,
@@ -193,6 +198,7 @@ fun a_record_approves_the_composition_at_the_selected_track() {
         pressing,
         pressing_cap,
     ) = policy_case(&mut ctx);
+    let events_before = event::num_events();
 
     policy::seal_approve_composition_for_testing(
         track_member_identity(object::id(&release), 0, object::id(&composition)),
@@ -200,6 +206,7 @@ fun a_record_approves_the_composition_at_the_selected_track() {
         &release,
         &composition,
     );
+    assert!(event::num_events() == events_before);
 
     destroy_case(
         composition,
