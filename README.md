@@ -27,24 +27,20 @@ keys.
 
 ## Packages
 
-| Package | Reads | Summary |
-|---------|-------|---------|
-| [`record_seal_policy`](./record_seal_policy) | `Record` | Frozen-gate identity parser, currently fail-closed because `&Record` cannot prove ownership. |
+This repository currently has no packages.
 
-## Dependencies
+### Retired: `record_seal_policy`
 
-Each package is independently publishable and pins reviewed source revisions:
+The Record Seal policy (`record_seal_policy`, three `seal_approve_*` entry functions
+over `&Record`) was retired on 2026-09-14 and removed from this repository. It proved
+membership, not ownership: `Record` has `store`, so a buyer can freeze or (at mint)
+share it, after which any address could satisfy the policy and decrypt the whole
+Release. See [misofm/audit#1](https://github.com/misofm/audit/issues/1).
 
-```toml
-record = { git = "https://github.com/misofm/record.git", rev = "8ece285b087cecf2892a19bcb13a7360e92b2937" }
-musicos = { git = "https://github.com/misofm/musicos.git", rev = "4fed48b2b5632122fb677d742881259c65b1bc78" }
-```
-
-Record's exact package type is the format boundary. Its Pressing authorizes the
-distributor witness types that may create Records and owns edition-local issuance.
-The Seal policy reads only the resulting Record and immutable Release. Record and
-the policy pin the same MusicOS revision, so both network lock graphs resolve one
-MusicOS package and one immutable BPS dependency.
+Seal access will instead move to a future, separate key-only `Player` object that takes
+custody of Records. That design does not exist yet. The testnet publication of the old
+policy (`0x7e3759ef…343a2b54`) is immutable and orphaned; do not point key servers at
+it, and do not publish it on mainnet.
 
 ## Design notes
 
@@ -52,21 +48,8 @@ MusicOS package and one immutable BPS dependency.
   core object.
 - **Ownership is not inferred from `&Record`.** Record has `store`, so a newly minted
   value can be shared or frozen. Either mode makes immutable access available without
-  current address ownership, and Move cannot inspect the mode. The policy therefore
-  fails closed pending an explicit access-capability or custody design.
-- **One policy gate.** `record_seal_policy` freezes a single `RecordGate` during
-  publication. The gate ID and Recording ID remain embedded in the established
-  98-byte identity layout; the supplied Release must bind them to the Record.
-
-## Build and test
-
-```sh
-cd record_seal_policy
-sui move test --build-env testnet
-sui move test --build-env mainnet
-sui move test --build-env testnet --coverage
-sui move coverage summary
-```
+  current address ownership, and Move cannot inspect the mode. Any future access policy
+  must take custody of the Record rather than borrow it.
 
 ## Related
 
