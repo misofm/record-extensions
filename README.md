@@ -1,3 +1,5 @@
+> **Archived.** This repository held no packages and is no longer maintained. Miso's packages live in [`misofm/framework`](https://github.com/misofm/framework).
+
 # Miso Record Extensions
 
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](#license)
